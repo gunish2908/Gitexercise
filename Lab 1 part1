@@ -1,0 +1,104 @@
+class MyFloat:
+    def __init__(self, m, e):
+        # e is an int, representing the number of bits for the exponent
+        self.e = e
+        # m is an int, representing the number of bits for the mantissa
+        self.m = m
+
+    def toDec(self, binstring):
+        """
+        This method converts binstring
+        It converts binstring to a normal python float, then returns it
+        """
+        if not isinstance(binstring, str):
+            raise TypeError("Wrong datatype, expecting str")
+        if len(binstring) != 1 + self.m + self.e:
+            raise ValueError("Length of binary number incorrect")
+        for i in binstring:
+            if i != "0" and i != "1":
+                raise ValueError("Expecting 0s and 1s only")
+
+        # Extract sign, exponent, and mantissa
+        sign_bit = int(binstring[0])  # 0 for positive, 1 for negative
+        exponent_bits = binstring[1:1 + self.e]
+        mantissa_bits = binstring[1 + self.e:]
+
+        # Convert exponent from binary to decimal
+        exponent_value = int(exponent_bits, 2)
+        bias = (1 << (self.e - 1)) - 1  # Bias is 2^(e-1) - 1
+        exponent = exponent_value - bias
+
+        # Convert mantissa from binary to decimal
+        mantissa = 1.0  # Start with 1 for the implicit leading bit
+        for index, bit in enumerate(mantissa_bits):
+            if bit == '1':
+                mantissa += 2 ** -(index + 1)
+
+        # Calculate the final result
+        result = mantissa * (2 ** exponent)
+
+        # Apply the sign
+        if sign_bit == 1:
+            result = -result
+
+        return result
+
+    def add(self, x, y):
+        """
+        This method adds the two numbers and outputs the result
+        """
+        dec_x = self.toDec(x)
+        dec_y = self.toDec(y)
+        sum_result = dec_x + dec_y
+
+        # Convert the sum back to binary format
+        if sum_result == 0:
+            return '0' * (1 + self.e + self.m)
+
+        # Determine the sign
+        sign_bit = '0' if sum_result > 0 else '1'
+        abs_result = abs(sum_result)
+
+        # Calculate exponent and mantissa
+        exponent = 0
+        while abs_result >= 2:
+            abs_result /= 2
+            exponent += 1
+        while abs_result < 1 and abs_result > 0:
+            abs_result *= 2
+            exponent -= 1
+
+        # Handle bias
+        biased_exponent = exponent + ((1 << (self.e - 1)) - 1)
+
+        if biased_exponent < 0 or biased_exponent >= (1 << self.e):
+            raise ValueError("Result out of exponent range")
+
+        # Convert mantissa to binary
+        mantissa_bits = ''
+        abs_result -= 1  # Remove the leading 1
+        for _ in range(self.m):
+            abs_result *= 2
+            if abs_result >= 1:
+                mantissa_bits += '1'
+                abs_result -= 1
+            else:
+                mantissa_bits += '0'
+
+        # Combine sign, exponent, and mantissa
+        exponent_bits = format(biased_exponent, f'0{self.e}b')
+        result = sign_bit + exponent_bits + mantissa_bits
+
+        return result
+
+
+if __name__ == "__main__":
+    print("local test mode")
+    
+    # Example of usage
+    my_float = MyFloat(4, 3)  # 4 bits for mantissa, 3 bits for exponent
+    bin1 = "010101000"  # Example binary representation
+    bin2 = "001100110"  # Example binary representation
+    
+    result = my_float.add(bin1, bin2)
+    print(f"Result of addition: {result}")
